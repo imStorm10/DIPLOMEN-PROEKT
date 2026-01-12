@@ -1,0 +1,188 @@
+﻿@model dynamic
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    :root {
+        --neon: #00f2ff;
+        --neon-purp: #7000ff;
+        --glass: rgba(255, 255, 255, 0.05);
+    }
+
+    .main-container {
+        display: flex;
+        height: 90vh;
+        background: #0a0a0c;
+        color: white;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        width: 450px;
+        background: #0f0f12;
+        padding: 25px;
+        overflow-y: auto;
+        border-right: 1px solid #222;
+    }
+
+    .neon-title {
+        font-weight: 900;
+        background: linear-gradient(to right, var(--neon), var(--neon-purp));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .filter-group {
+        margin-bottom: 20px;
+    }
+
+        .filter-group label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+    .btn-toggle {
+        background: #1a1a1f;
+        border: 1px solid #333;
+        color: white;
+        padding: 8px 15px;
+        cursor: pointer;
+        border-radius: 8px;
+        margin-right: 5px;
+        transition: 0.3s;
+    }
+
+        .btn-toggle.active {
+            background: var(--neon);
+            color: black;
+            border: none;
+            font-weight: bold;
+            box-shadow: 0 0 15px var(--neon);
+        }
+
+    .price-card {
+        background: var(--glass);
+        border: 1px solid var(--neon);
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 25px;
+        text-align: center;
+        display: none;
+    }
+
+    .part-item {
+        background: var(--glass);
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        border: 1px solid #222;
+    }
+
+        .part-item img {
+            width: 50px;
+            height: 50px;
+            margin-right: 15px;
+            background: white;
+            border-radius: 8px;
+            padding: 5px;
+        }
+</style>
+
+<div class="main-container">
+    <div class="sidebar">
+        <h2 class="neon-title">PC ARCHITECT AI</h2>
+
+        <div class="filter-group">
+            <label>Бюджет (€)</label>
+            <input type="number" id="budgetInput" class="form-control bg-dark text-white border-secondary" value="1500">
+        </div>
+
+        <div class="filter-group">
+            <label>Предназначение</label>
+            <button class="btn-toggle active" onclick="setF('type', 'gaming', this)">Gaming</button>
+            <button class="btn-toggle" onclick="setF('type', 'work', this)">Work</button>
+        </div>
+
+        <div class="filter-group">
+            <label>Процесор (CPU)</label>
+            <button class="btn-toggle active" onclick="setF('cpuBrand', 'Intel', this)">Intel</button>
+            <button class="btn-toggle" onclick="setF('cpuBrand', 'AMD', this)">AMD</button>
+        </div>
+
+        <div class="filter-group">
+            <label>Видеокарта (GPU)</label>
+            <button class="btn-toggle active" onclick="setF('gpuBrand', 'Nvidia', this)">Nvidia</button>
+            <button class="btn-toggle" onclick="setF('gpuBrand', 'AMD', this)">AMD</button>
+        </div>
+
+        <div class="filter-group">
+            <label>Размер (Motherboard)</label>
+            <button class="btn-toggle active" onclick="setF('formFactor', 'ATX', this)">ATX</button>
+            <button class="btn-toggle" onclick="setF('formFactor', 'mATX', this)">mATX</button>
+        </div>
+
+        <button class="btn btn-info w-100 py-3 font-weight-bold" onclick="generateBuild()">ГЕНЕРИРАЙ СИСТЕМА</button>
+
+        <div id="priceCard" class="price-card">
+            <span style="font-size: 11px; color: #888;">Обща цена на компонентите</span>
+            <h2 id="totalPrice" style="color: var(--neon); margin: 5px 0 0 0;">0 €</h2>
+        </div>
+
+        <div id="parts-list" style="margin-top: 25px;"></div>
+    </div>
+
+    <div class="viewport" id="canvas-container" style="flex-grow:1; background: radial-gradient(circle, #111 0%, #000 100%);"></div>
+</div>
+
+<script>
+    let filters = { type: 'gaming', cpuBrand: 'Intel', gpuBrand: 'Nvidia', formFactor: 'ATX' };
+
+    function setF(key, val, btn) {
+        filters[key] = val;
+        btn.parentNode.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function generateBuild() {
+        const budget = document.getElementById('budgetInput').value;
+        const list = document.getElementById('parts-list');
+        list.innerHTML = "<p class='text-center'>Анализиране на съвместимост...</p>";
+
+        const response = await fetch('/Configurator/Generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `budget=${budget}&type=${filters.type}&cpuBrand=${filters.cpuBrand}&gpuBrand=${filters.gpuBrand}&formFactor=${filters.formFactor}`
+        });
+
+        const data = await response.json();
+        list.innerHTML = "";
+
+        if(data.status === "Error") {
+            list.innerHTML = `<p class='text-danger'>${data.message}</p>`;
+            return;
+        }
+
+        document.getElementById('priceCard').style.display = "block";
+        document.getElementById('totalPrice').innerText = data.totalPrice.toFixed(2) + " €";
+
+        data.components.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "part-item";
+            div.innerHTML = `
+                <img src="${item.imageUrl}">
+                <div style="flex-grow:1">
+                    <h6 class="m-0" style="font-size:13px">${item.name}</h6>
+                    <small style="color:var(--neon)">${item.price} €</small>
+                </div>
+                <a href="${item.amazonUrl}" target="_blank" style="color:orange; font-size:18px">🛒</a>
+            `;
+            list.appendChild(div);
+        });
+    }
+</script>
