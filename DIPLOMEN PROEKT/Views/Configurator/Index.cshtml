@@ -1,188 +1,537 @@
-﻿@model dynamic
-@{
-    Layout = "~/Views/Shared/_Layout.cshtml";
+﻿@{
+    ViewData["Title"] = "PC Configurator";
 }
 
-<style>
-    :root {
-        --neon: #00f2ff;
-        --neon-purp: #7000ff;
-        --glass: rgba(255, 255, 255, 0.05);
-    }
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    .main-container {
-        display: flex;
-        height: 90vh;
-        background: #0a0a0c;
+<style>
+    /* ================= СТИЛОВЕ (CSS) ================= */
+    body {
+        background-color: #0f0f0f;
         color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
         overflow: hidden;
     }
 
+    .main-wrapper {
+        display: flex;
+        height: 100vh;
+        width: 100%;
+    }
+
+    /* --- ЛЯВА КОЛОНА (МЕНЮ) --- */
     .sidebar {
-        width: 450px;
-        background: #0f0f12;
+        width: 420px;
+        background: #1a1a1a;
         padding: 25px;
-        overflow-y: auto;
-        border-right: 1px solid #222;
+        border-right: 1px solid #333;
+        overflow-y: auto; /* СКРОЛЪТ Е ТУК */
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        flex-shrink: 0;
+        padding-bottom: 100px;
     }
 
-    .neon-title {
-        font-weight: 900;
-        background: linear-gradient(to right, var(--neon), var(--neon-purp));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+        /* Скролбар стил */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
 
-    .filter-group {
+        .sidebar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+            .sidebar::-webkit-scrollbar-thumb:hover {
+                background: #00d2ff;
+            }
+
+    h2 {
+        color: #00d2ff;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-top: 0;
         margin-bottom: 20px;
-    }
-
-        .filter-group label {
-            font-size: 11px;
-            color: #666;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-    .btn-toggle {
-        background: #1a1a1f;
-        border: 1px solid #333;
-        color: white;
-        padding: 8px 15px;
-        cursor: pointer;
-        border-radius: 8px;
-        margin-right: 5px;
-        transition: 0.3s;
-    }
-
-        .btn-toggle.active {
-            background: var(--neon);
-            color: black;
-            border: none;
-            font-weight: bold;
-            box-shadow: 0 0 15px var(--neon);
-        }
-
-    .price-card {
-        background: var(--glass);
-        border: 1px solid var(--neon);
-        padding: 20px;
-        border-radius: 12px;
-        margin-top: 25px;
+        font-size: 1.8em;
         text-align: center;
-        display: none;
+        border-bottom: 2px solid #333;
+        padding-bottom: 15px;
     }
 
-    .part-item {
-        background: var(--glass);
+    label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 6px;
+        font-weight: bold;
+        color: #ddd;
+        font-size: 0.95em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    input[type="number"] {
+        width: 100%;
+        padding: 12px;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 6px;
+        font-size: 1.1em;
+        box-sizing: border-box;
+    }
+
+    /* --- ПОПРАВКА НА БУТОНИТЕ --- */
+    .btn-group-custom {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .radio-btn {
+        flex: 1 0 30%;
+        position: relative;
+        margin: 0;
+        min-width: 80px;
+    }
+
+        .radio-btn input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .radio-btn span {
+            display: block;
+            padding: 12px 5px;
+            text-align: center;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: 0.2s;
+            color: #bbb;
+        }
+
+        .radio-btn input:checked + span {
+            background: #00d2ff;
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+            border-color: #00d2ff;
+        }
+
+    .section-group {
+        background: #222;
         padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #333;
+        margin-top: 10px;
+    }
+
+    .btn-generate {
+        width: 100%;
+        margin-top: 30px;
+        padding: 15px;
+        background: linear-gradient(90deg, #00d2ff, #0078ff);
+        color: white;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1em;
+        text-transform: uppercase;
+        transition: 0.3s;
+        box-shadow: 0 4px 20px rgba(0, 210, 255, 0.25);
+    }
+
+        .btn-generate:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+
+    .total-price-box {
+        margin-top: 20px;
+        padding: 15px;
+        border: 2px solid #00d2ff;
+        border-radius: 8px;
+        text-align: center;
+        background: rgba(0, 210, 255, 0.05);
+    }
+
+    .total-price-val {
+        font-size: 2.2em;
+        font-weight: bold;
+        color: #00d2ff;
+    }
+
+    /* --- ДЯСНА КОЛОНА --- */
+    .content-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #0f0f0f;
+        padding: 30px;
+        overflow-y: auto;
+        gap: 30px;
+    }
+
+    .model-viewport {
+        flex: 0 0 350px;
+        background: radial-gradient(circle at center, #2a2a2a 0%, #000000 100%);
+        border: 1px solid #333;
         border-radius: 12px;
-        margin-bottom: 12px;
+        position: relative;
         display: flex;
         align-items: center;
-        border: 1px solid #222;
+        justify-content: center;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
     }
 
-        .part-item img {
-            width: 50px;
-            height: 50px;
-            margin-right: 15px;
-            background: white;
-            border-radius: 8px;
-            padding: 5px;
+    .model-placeholder-text {
+        text-align: center;
+        color: #555;
+    }
+
+    .parts-header {
+        color: #fff;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+        font-size: 1.5em;
+    }
+
+    .parts-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 20px;
+        padding-bottom: 50px;
+    }
+
+    .part-card {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: 0.2s;
+        position: relative;
+    }
+
+        .part-card:hover {
+            transform: translateY(-5px);
+            border-color: #febd69;
+            background: #252525;
         }
+
+    .part-img {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .part-type {
+        font-size: 0.8em;
+        color: #888;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+    }
+
+    .part-name {
+        font-size: 1em;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 8px;
+        line-height: 1.3;
+        height: 42px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .part-spec {
+        font-size: 0.9em;
+        color: #00d2ff;
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .part-price {
+        font-size: 1.6em;
+        color: #ffffff;
+        font-weight: bold;
+        margin-bottom: 15px;
+        margin-top: auto;
+    }
+
+    .btn-amazon {
+        width: 100%;
+        padding: 12px;
+        background: #f0c14b;
+        border: 1px solid #a88734;
+        color: #111;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 1em;
+        font-weight: bold;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+        .btn-amazon:hover {
+            background: #f4d078;
+            cursor: pointer;
+        }
+
+    .loading-overlay {
+        display: none;
+        text-align: center;
+        color: #00d2ff;
+        padding: 20px;
+        font-size: 1.2em;
+    }
 </style>
 
-<div class="main-container">
+<div class="main-wrapper">
     <div class="sidebar">
-        <h2 class="neon-title">PC ARCHITECT AI</h2>
+        <h2>PC Architect AI</h2>
 
-        <div class="filter-group">
-            <label>Бюджет (€)</label>
-            <input type="number" id="budgetInput" class="form-control bg-dark text-white border-secondary" value="1500">
-        </div>
+        <form id="configForm">
+            <div class="section-group">
+                <label>БЮДЖЕТ (€)</label>
+                <input type="number" id="budget" name="budget" value="1500" min="500" step="50">
 
-        <div class="filter-group">
-            <label>Предназначение</label>
-            <button class="btn-toggle active" onclick="setF('type', 'gaming', this)">Gaming</button>
-            <button class="btn-toggle" onclick="setF('type', 'work', this)">Work</button>
-        </div>
+                <label>ПРЕДНАЗНАЧЕНИЕ</label>
+                <div class="btn-group-custom">
+                    <label class="radio-btn"><input type="radio" name="type" value="Gaming" checked><span>Gaming</span></label>
+                    <label class="radio-btn"><input type="radio" name="type" value="Workstation"><span>Work</span></label>
+                </div>
+            </div>
 
-        <div class="filter-group">
-            <label>Процесор (CPU)</label>
-            <button class="btn-toggle active" onclick="setF('cpuBrand', 'Intel', this)">Intel</button>
-            <button class="btn-toggle" onclick="setF('cpuBrand', 'AMD', this)">AMD</button>
-        </div>
+            <label>ПРОЦЕСОР (CPU)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="cpuBrand" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="cpuBrand" value="Intel"><span>Intel</span></label>
+                <label class="radio-btn"><input type="radio" name="cpuBrand" value="AMD"><span>AMD</span></label>
+            </div>
 
-        <div class="filter-group">
-            <label>Видеокарта (GPU)</label>
-            <button class="btn-toggle active" onclick="setF('gpuBrand', 'Nvidia', this)">Nvidia</button>
-            <button class="btn-toggle" onclick="setF('gpuBrand', 'AMD', this)">AMD</button>
-        </div>
+            <label>ВИДЕОКАРТА (GPU)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="gpuBrand" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="gpuBrand" value="Nvidia"><span>Nvidia</span></label>
+                <label class="radio-btn"><input type="radio" name="gpuBrand" value="AMD"><span>AMD</span></label>
+            </div>
 
-        <div class="filter-group">
-            <label>Размер (Motherboard)</label>
-            <button class="btn-toggle active" onclick="setF('formFactor', 'ATX', this)">ATX</button>
-            <button class="btn-toggle" onclick="setF('formFactor', 'mATX', this)">mATX</button>
-        </div>
+            <label>РАЗМЕР (FORM FACTOR)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="formFactor" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="formFactor" value="ATX"><span>ATX</span></label>
+                <label class="radio-btn"><input type="radio" name="formFactor" value="Micro-ATX"><span>mATX</span></label>
+            </div>
 
-        <button class="btn btn-info w-100 py-3 font-weight-bold" onclick="generateBuild()">ГЕНЕРИРАЙ СИСТЕМА</button>
+            <label>ТИП ОХЛАЖДАНЕ (COOLER)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="coolerType" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="coolerType" value="Air"><span>Air</span></label>
+                <label class="radio-btn"><input type="radio" name="coolerType" value="Liquid"><span>Liquid</span></label>
+            </div>
 
-        <div id="priceCard" class="price-card">
-            <span style="font-size: 11px; color: #888;">Обща цена на компонентите</span>
-            <h2 id="totalPrice" style="color: var(--neon); margin: 5px 0 0 0;">0 €</h2>
-        </div>
+            <label>ОСНОВЕН ДИСК (OS DRIVE)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="storageType" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="storageType" value="NVMe"><span>NVMe</span></label>
+                <label class="radio-btn"><input type="radio" name="storageType" value="HDD"><span>HDD</span></label>
+            </div>
 
-        <div id="parts-list" style="margin-top: 25px;"></div>
+            <label style="color:#00d2ff;">ВТОРИ ДИСК (ДОПЪЛНИТЕЛЕН)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="storage2Type" value="None" checked><span>Няма</span></label>
+                <label class="radio-btn"><input type="radio" name="storage2Type" value="HDD"><span>HDD</span></label>
+                <label class="radio-btn"><input type="radio" name="storage2Type" value="NVMe"><span>NVMe</span></label>
+            </div>
+
+            <label>ТИП RAM (DDR)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="ramType" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="ramType" value="DDR4"><span>DDR4</span></label>
+                <label class="radio-btn"><input type="radio" name="ramType" value="DDR5"><span>DDR5</span></label>
+            </div>
+
+            <label>КАПАЦИТЕТ RAM (GB)</label>
+            <div class="btn-group-custom">
+                <label class="radio-btn"><input type="radio" name="ramCapacity" value="Any" checked><span>Any</span></label>
+                <label class="radio-btn"><input type="radio" name="ramCapacity" value="8GB"><span>8 GB</span></label>
+                <label class="radio-btn"><input type="radio" name="ramCapacity" value="16GB"><span>16 GB</span></label>
+                <label class="radio-btn"><input type="radio" name="ramCapacity" value="32GB"><span>32 GB</span></label>
+                <label class="radio-btn"><input type="radio" name="ramCapacity" value="64GB"><span>64 GB</span></label>
+            </div>
+
+            <div class="section-group">
+                <label style="margin-top:0;">PSU ТИП (MODULARITY)</label>
+                <div class="btn-group-custom">
+                    <label class="radio-btn"><input type="radio" name="psuModularity" value="Any" checked><span>Any</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuModularity" value="Modular"><span>Modular</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuModularity" value="Semi"><span>Semi</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuModularity" value="Non"><span>Non</span></label>
+                </div>
+
+                <label>PSU МОЩНОСТ (WATT)</label>
+                <div class="btn-group-custom">
+                    <label class="radio-btn"><input type="radio" name="psuWattage" value="Any" checked><span>Any</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuWattage" value="Medium"><span>650-750</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuWattage" value="High"><span>850-1000</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuWattage" value="Extreme"><span>1000+</span></label>
+                </div>
+
+                <label>PSU СЕРТИФИКАТ</label>
+                <div class="btn-group-custom">
+                    <label class="radio-btn"><input type="radio" name="psuRating" value="Any" checked><span>Any</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuRating" value="Bronze"><span>Bronze</span></label>
+                    <label class="radio-btn"><input type="radio" name="psuRating" value="Gold"><span>Gold+</span></label>
+                </div>
+            </div>
+
+            <div class="total-price-box">
+                <div style="font-size:0.9em; color:#aaa; margin-bottom: 5px;">
+                    <i class="fa-solid fa-bolt" style="color:#ffeb3b;"></i> Консумация (Est.)
+                </div>
+                <div id="systemPowerVal" style="font-size: 1.4em; font-weight: bold; color: #ffeb3b; margin-bottom: 15px;">
+                    0 W
+                </div>
+
+                <div style="border-top: 1px solid #444; margin-bottom: 15px;"></div>
+
+                <div style="font-size:0.8em; color:#aaa;">Обща цена</div>
+                <div class="total-price-val" id="totalPrice">0.00 €</div>
+            </div>
+
+            <button type="button" class="btn-generate" onclick="generateConfig()">ГЕНЕРИРАЙ СИСТЕМА</button>
+        </form>
     </div>
 
-    <div class="viewport" id="canvas-container" style="flex-grow:1; background: radial-gradient(circle, #111 0%, #000 100%);"></div>
+    <div class="content-area">
+        <div class="model-viewport" id="modelContainer">
+            <div class="model-placeholder-text">
+                <div style="font-size: 3em;">🧊</div>
+                <h3>3D Преглед</h3>
+                <p>Системата ще се визуализира тук.</p>
+            </div>
+        </div>
+
+        <h3 class="parts-header">Избрани компоненти</h3>
+
+        <div id="loadingMsg" class="loading-overlay">
+            🤖 AI анализира пазара и избира най-добрите части...
+        </div>
+
+        <div class="parts-gallery" id="partsContainer">
+            <div style="grid-column: 1/-1; text-align:center; color:#555; padding-top:20px;">
+                Натиснете бутона "ГЕНЕРИРАЙ СИСТЕМА", за да започнем.
+            </div>
+        </div>
+    </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    let filters = { type: 'gaming', cpuBrand: 'Intel', gpuBrand: 'Nvidia', formFactor: 'ATX' };
+    function generateConfig() {
+        var formData = $('#configForm').serialize();
+        var container = $('#partsContainer');
+        var priceLabel = $('#totalPrice');
+        var powerLabel = $('#systemPowerVal');
+        var loading = $('#loadingMsg');
 
-    function setF(key, val, btn) {
-        filters[key] = val;
-        btn.parentNode.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-    }
+        container.empty();
+        loading.show();
+        priceLabel.text("...");
+        powerLabel.text("...");
 
-    async function generateBuild() {
-        const budget = document.getElementById('budgetInput').value;
-        const list = document.getElementById('parts-list');
-        list.innerHTML = "<p class='text-center'>Анализиране на съвместимост...</p>";
+        $.post("/Configurator/Generate", formData, function (data) {
+            loading.hide();
 
-        const response = await fetch('/Configurator/Generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `budget=${budget}&type=${filters.type}&cpuBrand=${filters.cpuBrand}&gpuBrand=${filters.gpuBrand}&formFactor=${filters.formFactor}`
-        });
+            if (data.Status === "Error") {
+                container.html('<h3 style="color:red; width:100%; text-align:center; grid-column: 1/-1;">' + data.Message + '</h3>');
+                priceLabel.text("0.00 €");
+                powerLabel.text("0 W");
+                return;
+            }
 
-        const data = await response.json();
-        list.innerHTML = "";
+            priceLabel.text(data.TotalPrice.toFixed(2) + " €");
+            powerLabel.text(data.SystemPower + " W");
 
-        if(data.status === "Error") {
-            list.innerHTML = `<p class='text-danger'>${data.message}</p>`;
-            return;
-        }
+            function addPart(part, typeLabel) {
+                if (part) {
+                    var imgDisplay = part.ImageUrl && part.ImageUrl.length > 5
+                        ? `<img src="${part.ImageUrl}" class="part-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2748/2748558.png'">`
+                        : `<img src="https://cdn-icons-png.flaticon.com/512/2748/2748558.png" class="part-img">`;
 
-        document.getElementById('priceCard').style.display = "block";
-        document.getElementById('totalPrice').innerText = data.totalPrice.toFixed(2) + " €";
+                    var extraInfo = "";
 
-        data.components.forEach(item => {
-            const div = document.createElement('div');
-            div.className = "part-item";
-            div.innerHTML = `
-                <img src="${item.imageUrl}">
-                <div style="flex-grow:1">
-                    <h6 class="m-0" style="font-size:13px">${item.name}</h6>
-                    <small style="color:var(--neon)">${item.price} €</small>
-                </div>
-                <a href="${item.amazonUrl}" target="_blank" style="color:orange; font-size:18px">🛒</a>
-            `;
-            list.appendChild(div);
+                    if (part.FormFactor) {
+                        extraInfo = `<div class="part-spec">${part.FormFactor}</div>`;
+                    }
+
+                    var amazonLink = part.Url;
+                    if (!amazonLink || amazonLink.length < 5) {
+                        amazonLink = "https://www.amazon.de/s?k=" + encodeURIComponent(part.Name);
+                    }
+
+                    var html = `
+                        <div class="part-card">
+                            ${imgDisplay}
+                            <div class="part-type">${typeLabel}</div>
+                            <div class="part-name" title="${part.Name}">${part.Name}</div>
+                            ${extraInfo}
+                            <div class="part-price">${part.Price.toFixed(2)} €</div>
+
+                            <a href="${amazonLink}" target="_blank" class="btn-amazon">
+                                <i class="fa-brands fa-amazon"></i> Купи от Amazon
+                            </a>
+                        </div>
+                    `;
+                    container.append(html);
+                }
+            }
+
+            addPart(data.CPU, "CPU");
+            addPart(data.Cooler, "CPU Cooler");
+            addPart(data.GPU, "GPU");
+            addPart(data.Motherboard, "Motherboard");
+            addPart(data.RAM, "RAM");
+            addPart(data.Storage, "Main Storage");
+            addPart(data.Storage2, "Secondary Storage"); // <-- ВТОРИ ДИСК ТУК
+            addPart(data.PSU, "PSU");
+            addPart(data.Case, "Case");
+
+        }).fail(function () {
+            loading.hide();
+            container.html('<h3 style="color:red; width:100%; text-align:center; grid-column: 1/-1;">Грешка при връзка със сървъра.</h3>');
         });
     }
 </script>

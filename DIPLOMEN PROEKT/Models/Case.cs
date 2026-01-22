@@ -1,19 +1,19 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PCConfigurator.Models
 {
-    public class Case : Component
+    public class Case
     {
-        // В базата ще го пазим като текст: "ATX,mATX"
-        public string SupportedFormFactors { get; set; } = string.Empty;
+        public int Id { get; set; }
 
-        // Помощно свойство за кода (не отива в базата)
-        [NotMapped]
-        public List<string> FormFactorsList
-        {
-            get => SupportedFormFactors.Split(',').ToList();
-        }
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        public string Brand { get; set; } = string.Empty; // NZXT, Corsair...
+        public decimal Price { get; set; }
+        public string FormFactor { get; set; } = string.Empty; // ATX (физически размер)
+        public string SupportedFormFactors { get; set; } = string.Empty; // Какви дъна събира (напр. "ATX, Micro-ATX")
+        public string ImageUrl { get; set; } = string.Empty;
+        public string? Url { get; set; }
     }
 }

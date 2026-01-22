@@ -1,24 +1,53 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PCConfigurator.Data;
+using PCConfigurator; // Това е нужно, за да намери ExcelPriceService
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+// =========================================================
+// 1. НАСТРОЙКИ НА УСЛУГИТЕ (SERVICES)
+// =========================================================
 
-// --- ВАЖНО: ТУК РЕГИСТРИРАМЕ БАЗАТА ДАННИ ---
-// Това казва на приложението да използва SQLite и файла pc_configurator.db
+// Важно за ExcelDataReader (за да чете правилно файла)
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+// Добавяме поддръжка за Контролери и Views (MVC)
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = null);
+
+// Настройка на Базата Данни (SQLite)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite("Data Source=pc_configurator.db"));
-// --------------------------------------------
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Регистрираме твоя Excel Сървис
+builder.Services.AddScoped<ExcelPriceService>();
+
+// =========================================================
+// КРАЙ НА НАСТРОЙКИТЕ - БИЛДВАНЕ НА APP
+// =========================================================
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 2. ОПЕРАЦИИ С БАЗАТА (MIGRATIONS)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        context.Database.Migrate(); // Създава/Обновява базата автоматично
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred seeding the DB.");
+    }
+}
+
+// 3. HTTP REQUEST PIPELINE (MIDDLEWARE)
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    // The default HSTS value is 30 days. You may want to change this for production scenarios.
     app.UseHsts();
 }
 
@@ -31,6 +60,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Configurator}/{action=Index}/{id?}"); // Променихме Home на Configurator, за да отваря директно конфигуратора
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();

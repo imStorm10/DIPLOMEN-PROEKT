@@ -1,10 +1,9 @@
-﻿using PCConfigurator.Data;
-using PCConfigurator.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using PCConfigurator.Data;
+using PCConfigurator.Models;
 
 namespace PCConfigurator.Models
 {
@@ -17,93 +16,164 @@ namespace PCConfigurator.Models
             _db = db;
         }
 
-        public async Task<object> PickBestConfiguration(decimal budget, string type, string cpuBrand, string gpuBrand, string formFactor)
+        public async Task<ConfigurationResult?> PickBestConfiguration(int budget, string type, string cpuBrand, string gpuBrand, string formFactor)
         {
-            // 1. Изтегляме всички данни от базата
-            var cpus = await _db.Processors.ToListAsync();
-            var gpus = await _db.GPUs.ToListAsync();
-            var mobos = await _db.Motherboards.ToListAsync();
-            var rams = await _db.RAMs.ToListAsync();
-            var psus = await _db.PSUs.ToListAsync();
-            var storages = await _db.Storages.ToListAsync();
-            var cases = await _db.Cases.ToListAsync();
+            // --- 1. РАЗПРЕДЕЛЕНИЕ НА БЮДЖЕТА ---
+            decimal cpuBudgetPct = type == "Gaming" ? 0.20m : 0.35m;
+            decimal gpuBudgetPct = type == "Gaming" ? 0.40m : 0.20m;
+            decimal moboBudgetPct = 0.12m;
+            decimal ramBudgetPct = 0.10m;
+            decimal storageBudgetPct = 0.08m;
+            decimal caseBudgetPct = 0.05m;
+            decimal psuBudgetPct = 0.05m;
 
-            // 2. Логика за бюджета
-            decimal fixedCosts = (budget < 800) ? 250 : 400;
-            decimal performanceBudget = budget - fixedCosts;
-            if (performanceBudget < 200) performanceBudget = budget * 0.5m;
+            // Оправяне на разминаването в имената (Mapping)
+            string dbFormFactor = formFactor;
+            if (formFactor == "Micro-ATX") dbFormFactor = "mATX";
 
-            decimal cpuLimit, gpuLimit;
-            if (type == "work") { cpuLimit = performanceBudget * 0.60m; gpuLimit = performanceBudget * 0.40m; }
-            else { cpuLimit = performanceBudget * 0.35m; gpuLimit = performanceBudget * 0.65m; }
+            // --- 2. CPU ---
+            var cpuQuery = _db.Processors.AsQueryable();
+            if (cpuBrand != "Any") cpuQuery = cpuQuery.Where(c => c.Brand == cpuBrand);
 
-            // 3. Избор на CPU
-            var selectedCPU = cpus.Where(c => c.Brand == cpuBrand && c.Price <= cpuLimit).OrderByDescending(c => c.Price).FirstOrDefault()
-                              ?? cpus.Where(c => c.Brand == cpuBrand).OrderBy(c => c.Price).FirstOrDefault();
+            var bestCpu = await cpuQuery
+                .Where(c => c.Price <= budget * cpuBudgetPct)
+                .OrderByDescending(c => (double)c.Price)
+                .FirstOrDefaultAsync();
 
-            // 4. Избор на GPU
-            var selectedGPU = gpus.Where(g => g.Brand == gpuBrand && g.Price <= gpuLimit).OrderByDescending(g => g.Price).FirstOrDefault()
-                              ?? gpus.Where(g => g.Brand == gpuBrand).OrderBy(g => g.Price).FirstOrDefault();
+            if (bestCpu == null) bestCpu = await cpuQuery.OrderBy(c => (double)c.Price).FirstOrDefaultAsync();
+            if (bestCpu == null) return null;
 
-            // 5. Избор на Дъно
-            var selectedMB = mobos.Where(m => m.Socket == selectedCPU.Socket && m.FormFactor == formFactor && m.Price <= selectedCPU.Price).OrderByDescending(m => m.Price).FirstOrDefault()
-                             ?? mobos.Where(m => m.Socket == selectedCPU.Socket).OrderBy(m => m.Price).FirstOrDefault();
+            // --- 3. MOTHERBOARD ---
+            var moboQuery = _db.Motherboards.AsQueryable();
+            moboQuery = moboQuery.Where(m => m.Socket == bestCpu.Socket);
 
-            // 6. RAM
-            var selectedRAM = rams.Where(r => r.Type == selectedMB.MemoryType).OrderByDescending(r => r.Price).FirstOrDefault() ?? rams.Last();
-
-            // 7. PSU
-            var selectedPSU = psus.Where(p => p.Wattage >= selectedGPU.RecommendedPSU).OrderBy(p => p.Price).FirstOrDefault()
-                              ?? psus.OrderByDescending(p => p.Wattage).Last();
-
-            // 8. Storage & Case
-            var selectedSSD = storages.OrderBy(s => s.Price).First();
-            if (budget > 1500) selectedSSD = storages.OrderByDescending(s => s.Price).First();
-            // Търсим дали стрингът съдържа нашия форм фактор (напр. дали "ATX,mATX" съдържа "ATX")
-            var selectedCase = cases.Where(c => c.SupportedFormFactors.Contains(selectedMB.FormFactor)).FirstOrDefault() ?? cases.First();
-
-            // 9. Downgrade Loop (Ако е твърде скъпо)
-            List<Component> build = new List<Component> { selectedCPU, selectedGPU, selectedMB, selectedRAM, selectedSSD, selectedPSU, selectedCase };
-            decimal total = build.Sum(p => p.Price);
-
-            int attempts = 0;
-            while (total > budget + 50 && attempts < 10)
+            if (formFactor != "Any")
             {
-                attempts++;
-                var cheaperGpu = gpus.Where(g => g.Brand == gpuBrand && g.Price < selectedGPU.Price).OrderByDescending(g => g.Price).FirstOrDefault();
-                if (cheaperGpu != null) { selectedGPU = cheaperGpu; build[1] = selectedGPU; }
-
-                total = build.Sum(p => p.Price);
-                if (total <= budget + 50) break;
-
-                var cheaperCpu = cpus.Where(c => c.Brand == cpuBrand && c.Price < selectedCPU.Price).OrderByDescending(c => c.Price).FirstOrDefault();
-                if (cheaperCpu != null)
-                {
-                    selectedCPU = cheaperCpu;
-                    build[0] = selectedCPU;
-                    var newMobo = mobos.FirstOrDefault(m => m.Socket == selectedCPU.Socket && m.FormFactor == formFactor);
-                    if (newMobo != null) { selectedMB = newMobo; build[2] = selectedMB; }
-                }
-                total = build.Sum(p => p.Price);
+                moboQuery = moboQuery.Where(m => m.FormFactor == dbFormFactor);
             }
 
-            int estimatedWattage = selectedCPU.TDP + (selectedGPU.RecommendedPSU / 2) + 50;
-            int load = (int)((double)estimatedWattage / selectedPSU.Wattage * 100);
+            var bestMotherboard = await moboQuery
+                .Where(m => m.Price <= budget * moboBudgetPct)
+                .OrderByDescending(m => (double)m.Price)
+                .FirstOrDefaultAsync();
 
-            return new
+            // Fallback ако не намерим точното дъно
+            if (bestMotherboard == null)
             {
-                Status = "Success",
-                Components = build.Select(p => new
+                bestMotherboard = await _db.Motherboards
+                    .Where(m => m.Socket == bestCpu.Socket)
+                    .OrderBy(m => (double)m.Price)
+                    .FirstOrDefaultAsync();
+            }
+            if (bestMotherboard == null) return null;
+
+            // --- 4. GPU ---
+            var gpuQuery = _db.GPUs.AsQueryable();
+            if (gpuBrand != "Any") gpuQuery = gpuQuery.Where(g => g.Brand == gpuBrand);
+
+            var bestGpu = await gpuQuery
+                .Where(g => g.Price <= budget * gpuBudgetPct)
+                .OrderByDescending(g => (double)g.Price)
+                .FirstOrDefaultAsync();
+
+            if (bestGpu == null) bestGpu = await gpuQuery.OrderBy(g => (double)g.Price).FirstOrDefaultAsync();
+
+            // --- 5. RAM ---
+            var bestRam = await _db.RAMs
+                .Where(r => r.Type == bestMotherboard.MemoryType && r.Price <= budget * ramBudgetPct)
+                .OrderByDescending(r => (double)r.Price).FirstOrDefaultAsync();
+
+            if (bestRam == null) bestRam = await _db.RAMs.Where(r => r.Type == bestMotherboard.MemoryType).OrderBy(r => (double)r.Price).FirstOrDefaultAsync();
+
+            // --- 6. STORAGE ---
+            var bestStorage = await _db.Storages
+                .Where(s => s.Price <= budget * storageBudgetPct)
+                .OrderByDescending(s => s.SizeGB)
+                .FirstOrDefaultAsync();
+
+            if (bestStorage == null) bestStorage = await _db.Storages.OrderBy(s => (double)s.Price).FirstOrDefaultAsync();
+
+            // --- 7. CASE (КУТИЯ) - ТУК Е НОВАТА ЛОГИКА ---
+            var caseQuery = _db.Cases.AsQueryable();
+
+            // Проверка: Огромна ли е видеокартата?
+            // (Карти с 3 вентилатора като 4090, 4080, 7900 обикновено искат ATX кутия)
+            bool isHugeGpu = false;
+            if (bestGpu != null)
+            {
+                if (bestGpu.Name.Contains("4090") ||
+                    bestGpu.Name.Contains("4080") ||
+                    bestGpu.Name.Contains("7900") ||
+                    bestGpu.Name.Contains("X3D")) // Примерни критерии за големи карти
                 {
-                    p.Name,
-                    p.Price,
-                    ImageUrl = !string.IsNullOrEmpty(p.ImageUrl) ? p.ImageUrl : "https://via.placeholder.com/150",
-                    AmazonUrl = "https://www.amazon.de/s?k=" + Uri.EscapeDataString(p.Name)
-                }),
-                TotalPrice = Math.Round(total, 2),
-                Wattage = estimatedWattage,
-                PsuWattage = selectedPSU.Wattage,
-                Load = load
+                    isHugeGpu = true;
+                }
+            }
+
+            string targetCaseSize = "ATX"; // По подразбиране
+
+            // АКО дъното е малко (mATX) И картата НЕ е огромна -> Търсим малка кутия
+            if (bestMotherboard.FormFactor == "mATX" && !isHugeGpu)
+            {
+                targetCaseSize = "mATX";
+            }
+            // АКО дъното е голямо (ATX) ИЛИ картата е огромна -> Търсим голяма кутия
+            else
+            {
+                targetCaseSize = "ATX";
+            }
+
+            // Търсим кутия, която в описанието си (FormFactor) отговаря на целевия размер
+            // ИЛИ в SupportedFormFactors съдържа размера на дъното.
+
+            var bestCase = await caseQuery
+                .Where(c => c.FormFactor == targetCaseSize || c.SupportedFormFactors.Contains(bestMotherboard.FormFactor))
+                .Where(c => c.Price <= budget * caseBudgetPct)
+                .OrderByDescending(c => (double)c.Price)
+                .FirstOrDefaultAsync();
+
+            // Ако не намерим специфична кутия, взимаме резервен вариант (ATX побира всичко)
+            if (bestCase == null)
+            {
+                bestCase = await _db.Cases
+                    .Where(c => c.SupportedFormFactors.Contains("ATX")) // ATX кутиите събират и mATX дъна
+                    .OrderBy(c => (double)c.Price)
+                    .FirstOrDefaultAsync();
+            }
+
+            // --- 8. PSU ---
+            int watts = 500;
+            if (bestGpu != null && bestGpu.RecommendedPSU > 0) watts = bestGpu.RecommendedPSU;
+            if (bestCpu.TDP > 120) watts += 100;
+
+            var bestPsu = await _db.PSUs
+                .Where(p => p.Wattage >= watts && p.Price <= budget * psuBudgetPct)
+                .OrderByDescending(p => (double)p.Price)
+                .FirstOrDefaultAsync();
+
+            if (bestPsu == null) bestPsu = await _db.PSUs.Where(p => p.Wattage >= watts).OrderBy(p => (double)p.Price).FirstOrDefaultAsync();
+
+            // --- ТОТАЛ ---
+            decimal total = 0;
+            if (bestCpu != null) total += bestCpu.Price;
+            if (bestGpu != null) total += bestGpu.Price;
+            if (bestMotherboard != null) total += bestMotherboard.Price;
+            if (bestRam != null) total += bestRam.Price;
+            if (bestStorage != null) total += bestStorage.Price;
+            if (bestCase != null) total += bestCase.Price;
+            if (bestPsu != null) total += bestPsu.Price;
+
+            return new ConfigurationResult
+            {
+                CPU = bestCpu,
+                GPU = bestGpu,
+                Motherboard = bestMotherboard,
+                RAM = bestRam,
+                Storage = bestStorage,
+                Case = bestCase,
+                PSU = bestPsu,
+                TotalPrice = total,
+                Status = "Success"
             };
         }
     }
